@@ -8,8 +8,9 @@ from collections import defaultdict
 def split_species(row):
     cols = row["name"].split("(")
     species = cols[0]
-    lineage = cols[1][:-1]
-    return pandas.Series([species, lineage])
+    sublineage = cols[1][:-1]
+    lineage = sublineage.str[:9]
+    return pandas.Series([species, lineage, sublineage])
 
 
 def build(
@@ -28,7 +29,8 @@ def build(
     master_table.set_index("UNIQUEID", inplace=True)
 
     path = pathlib.Path(output_path)
-
+    tables_path = pathlib.Path(tables_path)
+    
     tables = defaultdict(list)
 
     for folder in ["effects", "mutations", "predictions", "variants"]:
@@ -41,11 +43,10 @@ def build(
             master_table.at[uid, "has_" + folder] = True
             tables[folder].append(df)
 
-    effects = pandas.concat(tables["effects"])
-    mutations = pandas.concat(tables["mutations"])
-    predictions = pandas.concat(tables["predictions"])
-    variants = pandas.concat(tables["variants"])
-
+        df = pandas.concat(tables[folder])
+        df.to_csv(tables_path / folder.upper()+".csv")
+        df.to_parquet(tables_path / folder.upper()+".parquet")
+    
     for folder in ["main_report"]:
 
         for i in tqdm((path / folder).glob("*.json")):
@@ -82,6 +83,9 @@ def build(
 
             tables["main_report"].append(row)
 
+    master_table.to_csv(tables_path / 'ENA_LOOKUP.csv')
+    master_table.to_parquet(tables_path / 'ENA_LOOKUP.parquet')
+    
     genomes = pandas.DataFrame(
         tables["main_report"],
         columns=[
@@ -95,13 +99,14 @@ def build(
             "pipeline_build",
         ],
     )
-    genomes[["species", "lineage"]] = genomes.apply(split_species, axis=1)
+    genomes[["species", "lineage", 'sublineage']] = genomes.apply(split_species, axis=1)
     genomes.drop(columns=["name"], inplace=True)
     genomes = genomes[
         [
             "uniqueid",
             "species",
             "lineage",
+            "sublineage",
             "mycobacterial_reads",
             "tb_reads",
             "tb_coverage",
@@ -111,19 +116,8 @@ def build(
         ]
     ]
 
-    tables_path = pathlib.Path(tables_path)
-
     genomes.to_csv(tables_path / "GENOMES.csv")
-    variants.to_csv(tables_path / "VARIANTS.csv")
-    mutations.to_csv(tables_path / "MUTATIONS.csv")
-    effects.to_csv(tables_path / "EFFECTS.csv")
-    predictions.to_csv(tables_path / "PREDICTIONS.csv")
-
     genomes.to_parquet(tables_path / "GENOMES.parquet")
-    variants.to_parquet(tables_path / "VARIANTS.parquet")
-    mutations.to_parquet(tables_path / "MUTATIONS.parquet")
-    effects.to_parquet(tables_path / "EFFECTS.parquet")
-    predictions.to_parquet(tables_path / "PREDICTIONS.parquet")
 
 
 def main():
