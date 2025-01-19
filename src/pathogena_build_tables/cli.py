@@ -9,7 +9,7 @@ def split_species(row):
     cols = row["name"].split("(")
     species = cols[0]
     sublineage = cols[1][:-1]
-    lineage = sublineage.str[:9]
+    lineage = sublineage[:9]
     return pandas.Series([species, lineage, sublineage])
 
 
@@ -31,24 +31,28 @@ def build(
     path = pathlib.Path(output_path)
     tables_path = pathlib.Path(tables_path)
     
-    tables = defaultdict(list)
 
     for folder in ["effects", "mutations", "predictions", "variants"]:
 
+        tables=[]
+        
         for i in tqdm((path / folder).glob("*.csv")):
 
             df = pandas.read_csv(i)
             uid = i.stem.split("." + folder)[0]
             df["uniqueid"] = uid
             master_table.at[uid, "has_" + folder] = True
-            tables[folder].append(df)
+            tables.append(df)
 
-        df = pandas.concat(tables[folder])
-        df.to_csv(tables_path / folder.upper()+".csv")
-        df.to_parquet(tables_path / folder.upper()+".parquet")
+        df = pandas.concat(tables)
+        df.to_csv(str(tables_path / folder)+".csv")
+        if folder !='variants':
+            df.to_parquet(str(tables_path / folder)+ ".parquet")
     
     for folder in ["main_report"]:
 
+        tables = []
+        
         for i in tqdm((path / folder).glob("*.json")):
 
             uid = i.stem.split("." + folder)[0]
@@ -81,13 +85,13 @@ def build(
 
             row.append(data["Metadata"]["Pipeline build"])
 
-            tables["main_report"].append(row)
+            tables.append(row)
 
     master_table.to_csv(tables_path / 'ENA_LOOKUP.csv')
     master_table.to_parquet(tables_path / 'ENA_LOOKUP.parquet')
     
     genomes = pandas.DataFrame(
-        tables["main_report"],
+        tables,
         columns=[
             "uniqueid",
             "mycobacterial_reads",
@@ -116,8 +120,8 @@ def build(
         ]
     ]
 
-    genomes.to_csv(tables_path / "GENOMES.csv")
-    genomes.to_parquet(tables_path / "GENOMES.parquet")
+    genomes.to_csv(tables_path / "genomes.csv")
+    genomes.to_parquet(tables_path / "genomes.parquet")
 
 
 def main():
