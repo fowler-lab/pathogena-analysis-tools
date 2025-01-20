@@ -6,11 +6,11 @@ from collections import defaultdict
 
 
 def split_species(row):
-    cols = row["name"].split("(")
+    cols = row["name"].split(" (")
     species = cols[0]
-    sublineage = cols[1][:-1]
-    lineage = sublineage[:9]
-    return pandas.Series([species, lineage, sublineage])
+    # sublineage = cols[1][:-1]
+    # lineage = sublineage[:9]
+    return species #pandas.Series([species, lineage, sublineage])
 
 
 def build(
@@ -73,6 +73,33 @@ def build(
             row.append(data["Mycobacterium Results"]["Summary"][0]["Num Reads"])
             row.append(data["Mycobacterium Results"]["Summary"][0]["Coverage"])
             row.append(data["Mycobacterium Results"]["Summary"][0]["Depth"])
+            lineage_results = data["Mycobacterium Results"]["Lineage"]
+            n_lineages = len(lineage_results)
+            if n_lineages == 1:
+                if lineage_results[0]["Name"][:7] == 'lineage':
+                    lineage = lineage_results[0]["Name"][:8] 
+                    sublineage = lineage_results[0]["Name"]
+                    lineage_cov = lineage_results[0]["Coverage"]
+                    lineage_depth = lineage_results[0]["Median Depth"]
+                else:
+                    lineage = lineage_results[0]["Name"]
+                    sublineage = ''
+                    lineage_cov = lineage_results[0]["Coverage"]
+                    lineage_depth = lineage_results[0]["Median Depth"]
+                    
+            else:
+                lineage = 'mixed'
+                sublineage = ''
+                lineage_cov = None
+                lineage_depth = None
+                for i in lineage_results:
+                    sublineage+=i["Name"]+"/"
+                sublineage = sublineage[:-1]
+            row.append(n_lineages)
+            row.append(lineage)
+            row.append(sublineage)
+            row.append(lineage_cov)
+            row.append(lineage_depth)
 
             antibiogram = ""
             amr_results = data["Genomes"][0]["Resistance Prediction"][
@@ -99,22 +126,30 @@ def build(
             "tb_reads",
             "tb_coverage",
             "tb_depth",
+            "n_lineages",
+            "lineage",
+            "sublineage",
+            "mykrobe_lineage_coverage",
+            "mykrobe_lineage_depth",
             "antibiogram",
             "pipeline_build",
         ],
     )
-    genomes[["species", "lineage", 'sublineage']] = genomes.apply(split_species, axis=1)
+    genomes["species"] = genomes.apply(split_species, axis=1)
     genomes.drop(columns=["name"], inplace=True)
     genomes = genomes[
         [
             "uniqueid",
             "species",
+            "n_lineages",
             "lineage",
             "sublineage",
             "mycobacterial_reads",
             "tb_reads",
             "tb_coverage",
             "tb_depth",
+            "mykrobe_lineage_coverage",
+            "mykrobe_lineage_depth",
             "antibiogram",
             "pipeline_build",
         ]
