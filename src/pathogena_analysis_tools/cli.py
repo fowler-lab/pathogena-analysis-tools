@@ -8,9 +8,7 @@ from collections import defaultdict
 def split_species(row):
     cols = row["name"].split(" (")
     species = cols[0]
-    # sublineage = cols[1][:-1]
-    # lineage = sublineage[:9]
-    return species  # pandas.Series([species, lineage, sublineage])
+    return species
 
 
 def build_tables(
@@ -179,6 +177,11 @@ def build_tables(
                 "pipeline_build",
             ]
         ]
+        genomes["lineage"] = genomes["lineage"].astype("category")
+        genomes["sublineage"] = genomes["sublineage"].astype("category")
+        genomes["antibiogram"] = genomes["antibiogram"].astype("category")
+        genomes["pipeline_build"] = genomes["pipeline_build"].astype("category")
+        genomes.set_index("uniqueid", inplace=True)
 
         genomes.to_csv(tables_path / "genomes.csv")
         genomes.to_parquet(tables_path / "genomes.parquet")
