@@ -10,15 +10,16 @@ def split_species(row):
     species = cols[0]
     # sublineage = cols[1][:-1]
     # lineage = sublineage[:9]
-    return species #pandas.Series([species, lineage, sublineage])
+    return species  # pandas.Series([species, lineage, sublineage])
 
 
-def build(
-    master_table: str = None,
-    output_path: str = "data/",
-    tables_path: str = None,
+def build_tables(
+    lookup_table: str = None,
+    source_files: str = "data/",
+    output: str = None,
+    filename: str = "all",
 ):
-    master_file = pathlib.Path(master_table)
+    master_file = pathlib.Path(lookup_table)
     master_table = pandas.read_csv(master_file)
     master_table["has_effects"] = False
     master_table["has_variants"] = False
@@ -28,35 +29,43 @@ def build(
     master_table["in_mapping_file"] = False
     master_table.set_index("UNIQUEID", inplace=True)
 
-    path = pathlib.Path(output_path)
-    tables_path = pathlib.Path(tables_path)
-    
+    path = pathlib.Path(source_files)
+    tables_path = pathlib.Path(output)
 
-    for folder in ["effects", "mutations", "predictions", "variants"]:
+    assert filename in [
+        "all",
+        "effects",
+        "variants",
+        "mutations",
+        "predictions",
+        "main_report",
+    ], "can only specify one from this list"
 
-        tables=[]
-        
-        for i in tqdm((path / folder).glob("*.csv")):
+    if filename in ["effects", "mutations", "predictions", "variants"]:
+
+        tables = []
+
+        for i in tqdm((path).rglob("*" + filename + ".csv")):
 
             df = pandas.read_csv(i)
-            uid = i.stem.split("." + folder)[0]
+            uid = i.stem.split("." + filename)[0]
             df["uniqueid"] = uid
-            master_table.at[uid, "has_" + folder] = True
+            master_table.at[uid, "has_" + filename] = True
             tables.append(df)
 
         df = pandas.concat(tables)
-        df.to_csv(str(tables_path / folder)+".csv")
-        if folder !='variants':
-            df.to_parquet(str(tables_path / folder)+ ".parquet")
-    
-    for folder in ["main_report"]:
+        df.to_csv(str(tables_path / filename) + ".csv", index=False)
+        # if filename != "variants":
+        df.to_parquet(str(tables_path / filename) + ".parquet")
+
+    if filename == "main_report":
 
         tables = []
-        
-        for i in tqdm((path / folder).glob("*.json")):
 
-            uid = i.stem.split("." + folder)[0]
-            master_table.at[uid, "has_" + folder] = True
+        for i in tqdm((path).rglob("*" + filename + ".json")):
+
+            uid = i.stem.split("." + filename)[0]
+            master_table.at[uid, "has_" + filename] = True
 
             row = [uid]
             f = open(i)
@@ -66,7 +75,7 @@ def build(
                 data["Pipeline Outcome"]
                 != "Sufficient reads mapped to M. tuberculosis (H37Rv v3) for genome assembly, resistance prediction and relatedness assessment."
             ):
-                continue
+                print(uid, data["Pipeline Outcome"])
 
             row.append(data["Organism Identification"]["Mycobacterium Reads"])
             row.append(data["Mycobacterium Results"]["Summary"][0]["Name"])
@@ -76,24 +85,24 @@ def build(
             lineage_results = data["Mycobacterium Results"]["Lineage"]
             n_lineages = len(lineage_results)
             if n_lineages == 1:
-                if lineage_results[0]["Name"][:7] == 'lineage':
-                    lineage = lineage_results[0]["Name"][:8] 
+                if lineage_results[0]["Name"][:7] == "lineage":
+                    lineage = lineage_results[0]["Name"][:8]
                     sublineage = lineage_results[0]["Name"]
                     lineage_cov = lineage_results[0]["Coverage"]
                     lineage_depth = lineage_results[0]["Median Depth"]
                 else:
                     lineage = lineage_results[0]["Name"]
-                    sublineage = ''
+                    sublineage = ""
                     lineage_cov = lineage_results[0]["Coverage"]
                     lineage_depth = lineage_results[0]["Median Depth"]
-                    
+
             else:
-                lineage = 'mixed'
-                sublineage = ''
+                lineage = "mixed"
+                sublineage = ""
                 lineage_cov = None
                 lineage_depth = None
                 for i in lineage_results:
-                    sublineage+=i["Name"]+"/"
+                    sublineage += i["Name"] + "/"
                 sublineage = sublineage[:-1]
             row.append(n_lineages)
             row.append(lineage)
@@ -110,60 +119,61 @@ def build(
                     antibiogram += amr_results[j][k]
             row.append(antibiogram)
 
-            row.append(data["Metadata"]["Pipeline build"])
+            pipeline_build = data["Metadata"]["Pipeline build"].replace("\n", "")
+            row.append(pipeline_build)
 
             tables.append(row)
 
-    master_table.to_csv(tables_path / 'ENA_LOOKUP.csv')
-    master_table.to_parquet(tables_path / 'ENA_LOOKUP.parquet')
-    
-    genomes = pandas.DataFrame(
-        tables,
-        columns=[
-            "uniqueid",
-            "mycobacterial_reads",
-            "name",
-            "tb_reads",
-            "tb_coverage",
-            "tb_depth",
-            "n_lineages",
-            "lineage",
-            "sublineage",
-            "mykrobe_lineage_coverage",
-            "mykrobe_lineage_depth",
-            "antibiogram",
-            "pipeline_build",
-        ],
-    )
-    genomes["species"] = genomes.apply(split_species, axis=1)
-    genomes.drop(columns=["name"], inplace=True)
-    genomes = genomes[
-        [
-            "uniqueid",
-            "species",
-            "n_lineages",
-            "lineage",
-            "sublineage",
-            "mycobacterial_reads",
-            "tb_reads",
-            "tb_coverage",
-            "tb_depth",
-            "mykrobe_lineage_coverage",
-            "mykrobe_lineage_depth",
-            "antibiogram",
-            "pipeline_build",
+        genomes = pandas.DataFrame(
+            tables,
+            columns=[
+                "uniqueid",
+                "mycobacterial_reads",
+                "name",
+                "tb_reads",
+                "tb_coverage",
+                "tb_depth",
+                "n_lineages",
+                "lineage",
+                "sublineage",
+                "mykrobe_lineage_coverage",
+                "mykrobe_lineage_depth",
+                "antibiogram",
+                "pipeline_build",
+            ],
+        )
+        genomes["species"] = genomes.apply(split_species, axis=1)
+        genomes.drop(columns=["name"], inplace=True)
+        genomes = genomes[
+            [
+                "uniqueid",
+                "species",
+                "n_lineages",
+                "lineage",
+                "sublineage",
+                "mycobacterial_reads",
+                "tb_reads",
+                "tb_coverage",
+                "tb_depth",
+                "mykrobe_lineage_coverage",
+                "mykrobe_lineage_depth",
+                "antibiogram",
+                "pipeline_build",
+            ]
         ]
-    ]
 
-    genomes.to_csv(tables_path / "genomes.csv")
-    genomes.to_parquet(tables_path / "genomes.parquet")
+        genomes.to_csv(tables_path / "genomes.csv")
+        genomes.to_parquet(tables_path / "genomes.parquet")
+
+    master_table.to_csv(tables_path / "ENA_LOOKUP.csv", index=False)
+    master_table.to_parquet(tables_path / "ENA_LOOKUP.parquet")
 
 
 def main():
     import defopt
 
     defopt.run(
-        [build],
+        [build_tables],
         no_negated_flags=True,
         strict_kwonly=False,
         short={},
