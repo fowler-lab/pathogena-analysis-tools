@@ -48,6 +48,7 @@ def parse_variants(row):
 def build_tables(
     lookup_table: str = None,
     source_files: str = "data/",
+    max_samples: int = None,
     output: str = None,
     filename: str = None,
 ):
@@ -75,10 +76,14 @@ def build_tables(
     if filename in ["effects", "mutations", "predictions", "variants"]:
 
         tables = []
+        n_samples = 0
 
         for i in tqdm((path).rglob("*" + filename + ".csv")):
 
             df = pandas.read_csv(i)
+            n_samples += 1
+            if max_samples is not None and n_samples > max_samples:
+                break
             uid = i.stem.split("." + filename)[0]
             df["uniqueid"] = uid
             master_table.at[uid, "has_" + filename] = True
@@ -156,6 +161,7 @@ def build_tables(
     if filename == "main_report":
 
         tables = []
+        n_samples = 0
 
         for i in tqdm((path).rglob("*" + filename + ".json")):
 
@@ -165,6 +171,9 @@ def build_tables(
             row = [uid]
             f = open(i)
             data = json.load(f)
+            n_samples += 1
+            if max_samples is not None and n_samples > max_samples:
+                break
 
             if (
                 data["Pipeline Outcome"]
