@@ -58,6 +58,8 @@ def build_tables(
         # if filename != "variants":
         df.to_parquet(str(tables_path / filename) + ".parquet")
 
+    too_few_reads1 = 0
+    too_few_reads2 = 0
     if filename == "main_report":
 
         tables = []
@@ -71,13 +73,17 @@ def build_tables(
             f = open(i)
             data = json.load(f)
 
-            too_few_reads = 0
             if (
                 data["Pipeline Outcome"]
                 == "Mycobacterial species identified. Reads mapped to M. tuberculosis (H37Rv v3) too low to proceed to M. tuberculosis complex genome assembly."
             ):
-                too_few_reads += 1
+                too_few_reads1 += 1
                 continue
+            elif (
+                data["Pipeline Outcome"]
+                == "Number of Mycobacterial reads is too low to proceed to Mycobacterial species identification."
+            ):
+                too_few_reads2 += 1
             elif (
                 data["Pipeline Outcome"]
                 != "Sufficient reads mapped to M. tuberculosis (H37Rv v3) for genome assembly, resistance prediction and relatedness assessment."
@@ -173,7 +179,9 @@ def build_tables(
         genomes.to_csv(tables_path / "genomes.csv")
         genomes.to_parquet(tables_path / "genomes.parquet")
 
-        print(f"Too few reads {too_few_reads}")
+        print(
+            f"Too few reads for id {too_few_reads2} and too few reads for assembly {too_few_reads1}"
+        )
 
     master_table.to_csv(tables_path / "ENA_LOOKUP.csv", index=False)
     master_table.to_parquet(tables_path / "ENA_LOOKUP.parquet")
