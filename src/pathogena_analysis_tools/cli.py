@@ -5,6 +5,9 @@ from tqdm import tqdm
 from collections import defaultdict
 
 
+tqdm.pandas()
+
+
 def split_species(row):
     cols = row["name"].split(" (")
     species = cols[0]
@@ -99,7 +102,9 @@ def build_tables(
         tables = []
         n_samples = 0
 
-        for i in tqdm((path).rglob("*" + filename + ".csv")):
+        n_files = sum(1 for i in (path).rglob("*" + filename + ".csv"))
+
+        for i in tqdm((path).rglob("*" + filename + ".csv"), total=n_files):
 
             df = pandas.read_csv(i)
             n_samples += 1
@@ -162,7 +167,7 @@ def build_tables(
                     "minor_reads",
                     "coverage",
                 ]
-            ] = df.apply(parse_variants, axis=1)
+            ] = df.progress_apply(parse_variants, axis=1)
             df.drop(columns=["variant"], inplace=True)
             df.rename(columns={"var": "variant"}, inplace=True)
             for col in [
@@ -173,7 +178,7 @@ def build_tables(
 
         elif filename == "mutations":
             df[["mut", "is_null", "is_minor", "minor_mutation", "minor_reads"]] = (
-                df.apply(parse_mutations, axis=1)
+                df.progress_apply(parse_mutations, axis=1)
             )
             df.drop(columns=["mutation"], inplace=True)
             df.rename(columns={"mut": "mutation"}, inplace=True)
