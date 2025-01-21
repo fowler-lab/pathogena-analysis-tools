@@ -1,4 +1,4 @@
-import pandas, pathlib, json
+import pandas, pathlib, json, numpy
 
 from tqdm import tqdm
 
@@ -177,14 +177,24 @@ def build_tables(
             df.set_index(["uniqueid", "gene", "variant"], inplace=True)
 
         elif filename == "mutations":
-            df[["mut", "is_null", "is_minor", "minor_mutation", "minor_reads"]] = (
-                df.progress_apply(parse_mutations, axis=1)
-            )
-            df.drop(columns=["mutation"], inplace=True)
-            df.rename(columns={"mut": "mutation"}, inplace=True)
-            for col in ["gene", "ref", "alt", "amino_acid_sequence", "minor_mutation"]:
-                df[col] = df[col].astype("category")
-            df.set_index(["uniqueid", "gene", "mutation"], inplace=True)
+            tables = []
+            for df_i in tqdm(numpy.array_split(df, 100)):
+                df_i[
+                    ["mut", "is_null", "is_minor", "minor_mutation", "minor_reads"]
+                ] = df_i.apply(parse_mutations, axis=1)
+                df_i.drop(columns=["mutation"], inplace=True)
+                df_i.rename(columns={"mut": "mutation"}, inplace=True)
+                for col in [
+                    "gene",
+                    "ref",
+                    "alt",
+                    "amino_acid_sequence",
+                    "minor_mutation",
+                ]:
+                    df_i[col] = df_i[col].astype("category")
+                df_i.set_index(["uniqueid", "gene", "mutation"], inplace=True)
+                tables.append(df_i)
+            df = pandas.concat(tables)
 
         df.to_csv(str(tables_path / filename) + ".csv", index=False)
         # if filename != "variants":
