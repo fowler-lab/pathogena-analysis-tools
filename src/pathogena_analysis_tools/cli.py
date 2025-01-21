@@ -185,7 +185,7 @@ def build_tables(
         total_genomes = successful_genome + too_few_reads_genome + too_few_reads_id
         print(f"{total_genomes} samples were processed.")
         print(
-            f"{successful_genome} successfully reached a genome, {too_few_reads2} samples had too few reads for identification and {too_few_reads1} samples had too few reads for genome assembly"
+            f"{successful_genome} successfully reached a genome, {too_few_reads_id} samples had too few reads for identification and {too_few_reads_genome} samples had too few reads for genome assembly"
         )
 
     master_table.to_csv(tables_path / "ENA_LOOKUP.csv", index=False)
