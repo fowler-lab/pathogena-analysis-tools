@@ -170,7 +170,7 @@ def build_tables(
                         "minor_reads",
                         "coverage",
                     ]
-                ] = df_i.progress_apply(parse_variants, axis=1)
+                ] = df_i.apply(parse_variants, axis=1)
                 df_i.drop(columns=["variant"], inplace=True)
                 df_i.rename(columns={"var": "variant"}, inplace=True)
                 for col in [
