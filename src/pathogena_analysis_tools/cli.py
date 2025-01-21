@@ -77,6 +77,7 @@ def build_tables(
                 == "Mycobacterial species identified. Reads mapped to M. tuberculosis (H37Rv v3) too low to proceed to M. tuberculosis complex genome assembly."
             ):
                 too_few_reads += 1
+                continue
             elif (
                 data["Pipeline Outcome"]
                 != "Sufficient reads mapped to M. tuberculosis (H37Rv v3) for genome assembly, resistance prediction and relatedness assessment."
