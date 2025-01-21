@@ -158,23 +158,28 @@ def build_tables(
                 inplace=True,
             )
         elif filename == "variants":
-            df[
-                [
-                    "var",
-                    "is_null",
-                    "is_minor",
-                    "minor_variant",
-                    "minor_reads",
-                    "coverage",
-                ]
-            ] = df.progress_apply(parse_variants, axis=1)
-            df.drop(columns=["variant"], inplace=True)
-            df.rename(columns={"var": "variant"}, inplace=True)
-            for col in [
-                "gene",
-            ]:
-                df[col] = df[col].astype("category")
-            df.set_index(["uniqueid", "gene", "variant"], inplace=True)
+            tables = []
+            for df_i in tqdm(numpy.array_split(df, 100)):
+
+                df_i[
+                    [
+                        "var",
+                        "is_null",
+                        "is_minor",
+                        "minor_variant",
+                        "minor_reads",
+                        "coverage",
+                    ]
+                ] = df_i.progress_apply(parse_variants, axis=1)
+                df_i.drop(columns=["variant"], inplace=True)
+                df_i.rename(columns={"var": "variant"}, inplace=True)
+                for col in [
+                    "gene",
+                ]:
+                    df_i[col] = df_i[col].astype("category")
+                df_i.set_index(["uniqueid", "gene", "variant"], inplace=True)
+                tables.append(df_i)
+            df = pandas.concat(tables)
 
         elif filename == "mutations":
             tables = []
