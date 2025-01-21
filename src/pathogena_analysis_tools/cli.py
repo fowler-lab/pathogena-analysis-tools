@@ -58,8 +58,9 @@ def build_tables(
         # if filename != "variants":
         df.to_parquet(str(tables_path / filename) + ".parquet")
 
-    too_few_reads1 = 0
-    too_few_reads2 = 0
+    successful_genome = 0
+    too_few_reads_genome = 0
+    too_few_reads_id = 0
     if filename == "main_report":
 
         tables = []
@@ -77,18 +78,20 @@ def build_tables(
                 data["Pipeline Outcome"]
                 == "Mycobacterial species identified. Reads mapped to M. tuberculosis (H37Rv v3) too low to proceed to M. tuberculosis complex genome assembly."
             ):
-                too_few_reads1 += 1
+                too_few_reads_genome += 1
                 continue
             elif (
                 data["Pipeline Outcome"]
                 == "Number of Mycobacterial reads is too low to proceed to Mycobacterial species identification."
             ):
-                too_few_reads2 += 1
+                too_few_reads_id += 1
                 continue
             elif (
                 data["Pipeline Outcome"]
-                != "Sufficient reads mapped to M. tuberculosis (H37Rv v3) for genome assembly, resistance prediction and relatedness assessment."
+                == "Sufficient reads mapped to M. tuberculosis (H37Rv v3) for genome assembly, resistance prediction and relatedness assessment."
             ):
+                successful_genome += 1
+            else:
                 print(uid, data["Pipeline Outcome"])
                 continue
 
@@ -179,9 +182,10 @@ def build_tables(
 
         genomes.to_csv(tables_path / "genomes.csv")
         genomes.to_parquet(tables_path / "genomes.parquet")
-
+        total_genomes = successful_genome + too_few_reads_genome + too_few_reads_id
+        print(f"{total_genomes} samples were processed.")
         print(
-            f"Too few reads for id {too_few_reads2} and too few reads for assembly {too_few_reads1}"
+            f"{successful_genome} successfully reached a genome, {too_few_reads2} samples had too few reads for identification and {too_few_reads1} samples had too few reads for genome assembly"
         )
 
     master_table.to_csv(tables_path / "ENA_LOOKUP.csv", index=False)
