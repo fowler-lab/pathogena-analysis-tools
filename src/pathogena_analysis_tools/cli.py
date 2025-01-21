@@ -81,6 +81,7 @@ def build_tables(
     max_samples: int = None,
     output: str = None,
     filename: str = None,
+    chunks: int = 100,
 ):
     master_file = pathlib.Path(lookup_table)
     master_table = pandas.read_csv(master_file)
@@ -159,8 +160,7 @@ def build_tables(
             )
         elif filename == "variants":
             tables = []
-            for df_i in tqdm(numpy.array_split(df, 100)):
-
+            for df_i in tqdm(numpy.array_split(df, chunks)):
                 df_i[
                     [
                         "var",
@@ -183,7 +183,7 @@ def build_tables(
 
         elif filename == "mutations":
             tables = []
-            for df_i in tqdm(numpy.array_split(df, 100)):
+            for df_i in tqdm(numpy.array_split(df, chunks)):
                 df_i[
                     ["mut", "is_null", "is_minor", "minor_mutation", "minor_reads"]
                 ] = df_i.apply(parse_mutations, axis=1)
