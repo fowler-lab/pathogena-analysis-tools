@@ -81,12 +81,6 @@ def build_tables(
 ):
     master_file = pathlib.Path(lookup_table)
     master_table = pandas.read_csv(master_file)
-    master_table["has_effects"] = False
-    master_table["has_variants"] = False
-    master_table["has_mutations"] = False
-    master_table["has_predictions"] = False
-    master_table["has_main_report"] = False
-    master_table["in_mapping_file"] = False
     master_table.set_index("UNIQUEID", inplace=True)
 
     path = pathlib.Path(source_files)
@@ -329,9 +323,9 @@ def build_tables(
         print(
             f"{successful_genome} successfully reached a genome, {too_few_reads_id} samples had too few reads for identification and {too_few_reads_genome} samples had too few reads for genome assembly"
         )
-
-    master_table.to_csv(tables_path / "ENA_LOOKUP.csv", index=False)
-    master_table.to_parquet(tables_path / "ENA_LOOKUP.parquet")
+    master_output = master_file.name.split(".")[0]
+    master_table.to_csv(tables_path / (master_output + ".csv"), index=True)
+    master_table.to_parquet(tables_path / (master_output + ".parquet"))
 
 
 def main():
