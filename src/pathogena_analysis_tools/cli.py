@@ -11,11 +11,45 @@ def split_species(row):
     return species
 
 
+def parse_variants(row):
+
+    variant = row.variant
+    is_null = False
+    is_minor = False
+    minor_variant = None
+    minor_reads = 0
+    coverage = 0
+    frs = 0
+
+    a = json.loads(row["vcf_evidence"])
+    if "COV_TOTAL" in a.keys():
+        coverage = a["COV_TOTAL"]
+    if "FRS" in a.keys():
+        frs = a["FRS"]
+        if frs == ".":
+            frs = 0
+
+    if row.variant[-1] == "x":
+        is_null = True
+    elif ":" in row.variant:
+        is_minor = True
+        minor_variant = row.variant.split(":")[0]
+        minor_reads = int(row.variant.split(":")[1])
+        if "ins" in variant or "del" in variant:
+            variant = minor_variant.split("_")[0] + "_minorindel"
+        else:
+            variant = minor_variant[:-1] + "x"
+
+    return pandas.Series(
+        [variant, is_null, is_minor, minor_variant, minor_reads, coverage, frs]
+    )
+
+
 def build_tables(
     lookup_table: str = None,
     source_files: str = "data/",
     output: str = None,
-    filename: str = "all",
+    filename: str = None,
 ):
     master_file = pathlib.Path(lookup_table)
     master_table = pandas.read_csv(master_file)
@@ -31,7 +65,6 @@ def build_tables(
     tables_path = pathlib.Path(output)
 
     assert filename in [
-        "all",
         "effects",
         "variants",
         "mutations",
@@ -52,6 +85,67 @@ def build_tables(
             tables.append(df)
 
         df = pandas.concat(tables)
+
+        if filename == "effects":
+            for col in [
+                "gene",
+                "drug",
+                "prediction",
+                "catalogue_name",
+                "prediction_values",
+            ]:
+                df[col] = df[col].astype("category")
+            df.set_index(
+                [
+                    "uniqueid",
+                    "catalogue_name",
+                    "catalogue_version",
+                    "prediction_values",
+                    "drug",
+                    "gene",
+                    "mutation",
+                ],
+                inplace=True,
+            )
+
+        elif filename == "predictions":
+            for col in [
+                "drug",
+                "prediction",
+                "catalogue_name",
+                "catalogue_values",
+            ]:
+                df[col] = df[col].astype("category")
+            df.set_index(
+                [
+                    "uniqueid",
+                    "catalogue_name",
+                    "catalogue_version",
+                    "catalogue_values",
+                    "drug",
+                ],
+                inplace=True,
+            )
+        elif filename == "variants":
+            df[
+                [
+                    "var",
+                    "is_null",
+                    "is_minor",
+                    "minor_variant",
+                    "minor_reads",
+                    "coverage",
+                    "FRS",
+                ]
+            ] = df.apply(parse_variants, axis=1)
+            df.drop(columns=["variant"], inplace=True)
+            df.rename(columns={"var": "variant"}, inplace=True)
+            for col in [
+                "gene",
+            ]:
+                df[col] = df[col].astype("category")
+            df.set_index(["uniqueid", "gene", "variant"], inplace=True)
+
         df.to_csv(str(tables_path / filename) + ".csv", index=False)
         # if filename != "variants":
         df.to_parquet(str(tables_path / filename) + ".parquet")
