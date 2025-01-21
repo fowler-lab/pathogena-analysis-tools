@@ -71,7 +71,13 @@ def build_tables(
             f = open(i)
             data = json.load(f)
 
+            too_few_reads = 0
             if (
+                data["Pipeline Outcome"]
+                == "Mycobacterial species identified. Reads mapped to M. tuberculosis (H37Rv v3) too low to proceed to M. tuberculosis complex genome assembly."
+            ):
+                too_few_reads += 1
+            elif (
                 data["Pipeline Outcome"]
                 != "Sufficient reads mapped to M. tuberculosis (H37Rv v3) for genome assembly, resistance prediction and relatedness assessment."
             ):
@@ -165,6 +171,8 @@ def build_tables(
 
         genomes.to_csv(tables_path / "genomes.csv")
         genomes.to_parquet(tables_path / "genomes.parquet")
+
+        print(f"Too few reads {too_few_reads}")
 
     master_table.to_csv(tables_path / "ENA_LOOKUP.csv", index=False)
     master_table.to_parquet(tables_path / "ENA_LOOKUP.parquet")
