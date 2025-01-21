@@ -76,6 +76,7 @@ def build_tables(
                 != "Sufficient reads mapped to M. tuberculosis (H37Rv v3) for genome assembly, resistance prediction and relatedness assessment."
             ):
                 print(uid, data["Pipeline Outcome"])
+                continue
 
             row.append(data["Organism Identification"]["Mycobacterium Reads"])
             row.append(data["Mycobacterium Results"]["Summary"][0]["Name"])
