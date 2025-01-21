@@ -19,30 +19,57 @@ def parse_variants(row):
     minor_variant = None
     minor_reads = 0
     coverage = 0
-    frs = 0
+    # frs = 0
 
     a = json.loads(row["vcf_evidence"])
     if "COV_TOTAL" in a.keys():
         coverage = a["COV_TOTAL"]
-    if "FRS" in a.keys():
-        frs = a["FRS"]
-        if frs == ".":
-            frs = 0
+    # if "FRS" in a.keys():
+    #     frs = a["FRS"]
+    #     if frs == ".":
+    #         frs = None
 
-    if row.variant[-1] == "x":
+    if variant[-1] == "x":
         is_null = True
-    elif ":" in row.variant:
+    elif ":" in variant:
         is_minor = True
-        minor_variant = row.variant.split(":")[0]
-        minor_reads = int(row.variant.split(":")[1])
+        cols = variant.split(":")
+        minor_variant = cols[0]
+        minor_reads = int(cols[1])
         if "ins" in variant or "del" in variant:
             variant = minor_variant.split("_")[0] + "_minorindel"
         else:
-            variant = minor_variant[:-1] + "x"
+            variant = minor_variant[:-1] + "z"
 
     return pandas.Series(
-        [variant, is_null, is_minor, minor_variant, minor_reads, coverage, frs]
+        [variant, is_null, is_minor, minor_variant, minor_reads, coverage]
     )
+
+
+def parse_mutations(row):
+
+    mutation = row.mutation
+    is_null = False
+    is_minor = False
+    minor_mutation = None
+    minor_reads = None
+
+    if ":" in mutation:
+        is_minor = True
+        cols = mutation.split(":")
+        minor_mutation = cols[0]
+        minor_reads = int(cols[1])
+        if "ins" in mutation or "del" in mutation:
+            mutation = mutation.split("_")[0] + "_minorindel"
+        else:
+            if minor_mutation[0] in ["a", "t", "c", "g"]:
+                mutation = minor_mutation[:-1] + "z"
+            else:
+                mutation = minor_mutation[:-1] + "Z"
+    elif mutation[-1] in ["X", "x"]:
+        is_null = True
+
+    return pandas.Series([mutation, is_null, is_minor, minor_mutation, minor_reads])
 
 
 def build_tables(
@@ -140,7 +167,6 @@ def build_tables(
                     "minor_variant",
                     "minor_reads",
                     "coverage",
-                    "FRS",
                 ]
             ] = df.apply(parse_variants, axis=1)
             df.drop(columns=["variant"], inplace=True)
@@ -150,6 +176,16 @@ def build_tables(
             ]:
                 df[col] = df[col].astype("category")
             df.set_index(["uniqueid", "gene", "variant"], inplace=True)
+
+        elif filename == "mutations":
+            df[["mut", "is_null", "is_minor", "minor_mutation", "minor_reads"]] = (
+                df.apply(parse_mutations, axis=1)
+            )
+            df.drop(columns=["mutation"], inplace=True)
+            df.rename(columns={"mut": "mutation"}, inplace=True)
+            for col in ["gene", "ref", "alt", "amino_acid_sequence", "minor_mutation"]:
+                df[col] = df[col].astype("category")
+            df.set_index(["uniqueid", "gene", "mutation"], inplace=True)
 
         df.to_csv(str(tables_path / filename) + ".csv", index=False)
         # if filename != "variants":
