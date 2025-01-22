@@ -181,8 +181,10 @@ def build_tables(
                 df_i.set_index(["uniqueid", "gene", "variant"], inplace=True)
                 tables.append(df_i)
                 df = pandas.concat(tables)
-                df.to_parquet(str(tables_path / (filename + "_" + str(counter)) + ".parquet")
-                counter+=1
+                df.to_parquet(
+                    str(tables_path / (filename + "_" + str(counter))) + ".parquet"
+                )
+                counter += 1
             df = pandas.concat(tables)
 
         elif filename == "mutations":
