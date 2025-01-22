@@ -172,7 +172,7 @@ def build_tables(
                         "coverage",
                     ]
                 ] = df_i.apply(parse_variants, axis=1)
-                df_i.drop(columns=["variant"], inplace=True)
+                df_i.drop(columns=["variant", "vcf_evidence"], inplace=True)
                 df_i.rename(columns={"var": "variant"}, inplace=True)
                 for col in [
                     "gene",
@@ -185,6 +185,11 @@ def build_tables(
                 tables.append(df_i)
                 counter += 1
             df = pandas.concat(tables)
+            files = glob.glob("variants_*.parquet")
+            schema = pq.ParquetFile(files[0]).schema_arrow
+            with pq.ParquetWriter("variants.parquet", schema=schema) as writer:
+                for file in tqdm(files):
+                    writer.write_table(pq.read_table(file, schema=schema))
 
         elif filename == "mutations":
             tables = []
@@ -207,8 +212,8 @@ def build_tables(
             df = pandas.concat(tables)
 
         df.to_csv(str(tables_path / filename) + ".csv", index=False)
-        # if filename != "variants":
-        df.to_parquet(str(tables_path / filename) + ".parquet")
+        if filename != "variants":
+            df.to_parquet(str(tables_path / filename) + ".parquet")
 
     successful_genome = 0
     too_few_reads_genome = 0
