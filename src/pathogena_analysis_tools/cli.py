@@ -30,7 +30,12 @@ def parse_variants(row):
     if "COV_TOTAL" in a.keys():
         coverage = a["COV_TOTAL"]
     if "COV" in a.keys():
-        coverage2 = sum(a["COV"])
+        if isinstance(a["COV"], list):
+            coverage2 = sum(a["COV"])
+        elif isinstance(a["COV"], int):
+            coverage = a["COV"]
+        else:
+            coverage = -1
 
     # if "FRS" in a.keys():
     #     frs = a["FRS"]
