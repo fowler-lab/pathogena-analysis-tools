@@ -23,11 +23,15 @@ def parse_variants(row):
     minor_variant = None
     minor_reads = 0
     coverage = 0
+    coverage2 = 0
     # frs = 0
 
     a = json.loads(row["vcf_evidence"])
     if "COV_TOTAL" in a.keys():
         coverage = a["COV_TOTAL"]
+    if "COV" in a.keys():
+        coverage2 = sum(a["COV"])
+
     # if "FRS" in a.keys():
     #     frs = a["FRS"]
     #     if frs == ".":
@@ -46,7 +50,7 @@ def parse_variants(row):
             variant = minor_variant[:-1] + "z"
 
     return pandas.Series(
-        [variant, is_null, is_minor, minor_variant, minor_reads, coverage]
+        [variant, is_null, is_minor, minor_variant, minor_reads, coverage, coverage2]
     )
 
 
@@ -171,6 +175,7 @@ def build_tables(
                         "minor_variant",
                         "minor_reads",
                         "coverage",
+                        "coverage2",
                     ]
                 ] = df_i.apply(parse_variants, axis=1)
                 df_i.drop(columns=["variant", "vcf_evidence"], inplace=True)
