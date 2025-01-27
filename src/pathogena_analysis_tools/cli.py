@@ -90,6 +90,7 @@ def build_tables(
     source_files: str = "data/",
     max_samples: int = None,
     output: str = None,
+    uppercase: bool = True,
     filename: str = None,
     chunks: int = 100,
 ):
@@ -253,17 +254,20 @@ def build_tables(
                 == "Mycobacterial species identified. Reads mapped to M. tuberculosis (H37Rv v3) too low to proceed to M. tuberculosis complex genome assembly."
             ):
                 too_few_reads_genome += 1
+                master_table.at[uid, "status"] = "cannot assemble"
                 continue
             elif (
                 data["Pipeline Outcome"]
                 == "Number of Mycobacterial reads is too low to proceed to Mycobacterial species identification."
             ):
                 too_few_reads_id += 1
+                master_table.at[uid, "status"] = "cannot speciate"
                 continue
             elif (
                 data["Pipeline Outcome"]
                 == "Sufficient reads mapped to M. tuberculosis (H37Rv v3) for genome assembly, resistance prediction and relatedness assessment."
             ):
+                master_table.at[uid, "status"] = "complete"
                 successful_genome += 1
             else:
                 print(uid, data["Pipeline Outcome"])
@@ -278,6 +282,13 @@ def build_tables(
             n_lineages = len(lineage_results)
             if n_lineages == 1:
                 if lineage_results[0]["Name"][:7] == "lineage":
+                    if lineage_results[0]["Name"][7] in [
+                        "B",
+                        "C",
+                    ]:
+                        lineage = lineage_results[0]["Name"]
+                    else:
+                        lineage = lineage_results[0]["Name"][:8]
                     lineage = lineage_results[0]["Name"][:8]
                     sublineage = lineage_results[0]["Name"]
                     lineage_cov = lineage_results[0]["Coverage"]
@@ -299,8 +310,8 @@ def build_tables(
             row.append(n_lineages)
             row.append(lineage)
             row.append(sublineage)
-            row.append(lineage_cov)
-            row.append(lineage_depth)
+            # row.append(lineage_cov)
+            # row.append(lineage_depth)
 
             antibiogram = ""
             amr_results = data["Genomes"][0]["Resistance Prediction"][
@@ -328,8 +339,6 @@ def build_tables(
                 "n_lineages",
                 "lineage",
                 "sublineage",
-                "mykrobe_lineage_coverage",
-                "mykrobe_lineage_depth",
                 "antibiogram",
                 "pipeline_build",
             ],
@@ -347,8 +356,6 @@ def build_tables(
                 "tb_reads",
                 "tb_coverage",
                 "tb_depth",
-                "mykrobe_lineage_coverage",
-                "mykrobe_lineage_depth",
                 "antibiogram",
                 "pipeline_build",
             ]
@@ -357,7 +364,12 @@ def build_tables(
         genomes["sublineage"] = genomes["sublineage"].astype("category")
         genomes["antibiogram"] = genomes["antibiogram"].astype("category")
         genomes["pipeline_build"] = genomes["pipeline_build"].astype("category")
-        genomes.set_index("uniqueid", inplace=True)
+
+        if uppercase:
+            genomes = genomes.rename(columns=str.upper)
+            genomes.set_index("UNIQUEID", inplace=True)
+        else:
+            genomes.set_index("uniqueid", inplace=True)
 
         genomes.to_csv(tables_path / "genomes.csv")
         genomes.to_parquet(tables_path / "genomes.parquet")
