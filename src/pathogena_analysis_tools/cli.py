@@ -183,6 +183,7 @@ def build_tables(
                         "frs",
                     ]
                 ] = df_i.apply(parse_variants, axis=1)
+                df_i.drop(columns=["variant"], inplace=True)
                 df_i.rename(columns={"var": "variant"}, inplace=True)
                 for col in [
                     "gene",
@@ -190,7 +191,7 @@ def build_tables(
                     df_i[col] = df_i[col].astype("category")
                 df_i.set_index(["uniqueid", "gene", "variant"], inplace=True)
                 df_i.to_csv(str(tables_path / (filename + "_" + str(counter))) + ".csv")
-                df_i.drop(columns=["variant", "vcf_evidence"], inplace=True)
+                df_i.drop(columns=["vcf_evidence"], inplace=True)
                 df_i.to_parquet(
                     str(tables_path / (filename + "_" + str(counter))) + ".parquet"
                 )
