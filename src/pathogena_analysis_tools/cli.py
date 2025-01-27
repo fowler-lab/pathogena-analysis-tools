@@ -23,10 +23,17 @@ def parse_variants(row):
     minor_variant = None
     minor_reads = 0
     coverage = 0
-    coverage2 = 0
-    frs = None
 
     a = json.loads(row["vcf_evidence"])
+
+    # From Jeremy:
+    #  "Just heard back from Martin, because of minos mapping
+    #   against a graph rather than genome, COV_TOTAL is reads
+    #   mapping to the site (so reads can map to multiple sites
+    #   in an allele), whereas COV is unique reads mapping to
+    #   the allele, which is why COV_TOTAL can be bigger. So
+    #   I think sum(COV) is what we should be using here"
+
     # if "COV_TOTAL" in a.keys():
     #     coverage = a["COV_TOTAL"]
     if "COV" in a.keys():
@@ -37,10 +44,11 @@ def parse_variants(row):
         else:
             coverage = -1
 
-    if "FRS" in a.keys():
-        frs = a["FRS"]
-        if frs == ".":
-            frs = None
+    # FRS can be the wrong way round so ignore
+    # if "FRS" in a.keys():
+    #     frs = a["FRS"]
+    #     if frs == ".":
+    #         frs = None
 
     if variant[-1] == "x":
         is_null = True
@@ -55,7 +63,7 @@ def parse_variants(row):
             variant = minor_variant[:-1] + "z"
 
     return pandas.Series(
-        [variant, is_null, is_minor, minor_variant, minor_reads, coverage, frs]
+        [variant, is_null, is_minor, minor_variant, minor_reads, coverage]
     )
 
 
@@ -138,18 +146,33 @@ def build_tables(
                 "prediction_values",
             ]:
                 df[col] = df[col].astype("category")
-            df.set_index(
-                [
-                    "uniqueid",
-                    "catalogue_name",
-                    "catalogue_version",
-                    "prediction_values",
-                    "drug",
-                    "gene",
-                    "mutation",
-                ],
-                inplace=True,
-            )
+            if uppercase:
+                df = df.rename(columns=str.upper)
+                df.set_index(
+                    [
+                        "UNIQUEID",
+                        "CATALOGUE_NAME",
+                        "CATALOGUE_VERSION",
+                        "PREDICTION_VALUES",
+                        "DRUG",
+                        "GENE",
+                        "MUTATION",
+                    ],
+                    inplace=True,
+                )
+            else:
+                df.set_index(
+                    [
+                        "uniqueid",
+                        "catalogue_name",
+                        "catalogue_version",
+                        "prediction_values",
+                        "drug",
+                        "gene",
+                        "mutation",
+                    ],
+                    inplace=True,
+                )
 
         elif filename == "predictions":
             for col in [
@@ -159,16 +182,31 @@ def build_tables(
                 "catalogue_values",
             ]:
                 df[col] = df[col].astype("category")
-            df.set_index(
-                [
-                    "uniqueid",
-                    "catalogue_name",
-                    "catalogue_version",
-                    "catalogue_values",
-                    "drug",
-                ],
-                inplace=True,
-            )
+
+            if uppercase:
+                df = df.rename(columns=str.upper)
+                df.set_index(
+                    [
+                        "UNIQUEID",
+                        "CATALOGUE_NAME",
+                        "CATALOGUE_VERSION",
+                        "PREDICTION_VALUES",
+                        "DRUG",
+                    ],
+                    inplace=True,
+                )
+
+            else:
+                df.set_index(
+                    [
+                        "uniqueid",
+                        "catalogue_name",
+                        "catalogue_version",
+                        "catalogue_values",
+                        "drug",
+                    ],
+                    inplace=True,
+                )
         elif filename == "variants":
             tables = []
             counter = 0
@@ -181,7 +219,6 @@ def build_tables(
                         "minor_variant",
                         "minor_reads",
                         "coverage",
-                        "frs",
                     ]
                 ] = df_i.apply(parse_variants, axis=1)
                 df_i.drop(columns=["variant"], inplace=True)
@@ -190,12 +227,29 @@ def build_tables(
                     "gene",
                 ]:
                     df_i[col] = df_i[col].astype("category")
-                df_i.set_index(["uniqueid", "gene", "variant"], inplace=True)
-                df_i.to_csv(str(tables_path / (filename + "_" + str(counter))) + ".csv")
-                df_i.drop(columns=["vcf_evidence"], inplace=True)
-                df_i.to_parquet(
-                    str(tables_path / (filename + "_" + str(counter))) + ".parquet"
-                )
+
+                if uppercase:
+                    df_i = df_i.rename(columns=str.upper)
+                    df_i.set_index(["UNIQUEID", "GENE", "VARIANT"], inplace=True)
+                    df_i.to_csv(
+                        str(tables_path / (filename.upper() + "_" + str(counter)))
+                        + ".csv"
+                    )
+                    df_i.drop(columns=["VCF_EVIDENCE"], inplace=True)
+                    df_i.to_parquet(
+                        str(tables_path / (filename.upper() + "_" + str(counter)))
+                        + ".parquet"
+                    )
+                else:
+                    df_i.set_index(["uniqueid", "gene", "variant"], inplace=True)
+                    df_i.to_csv(
+                        str(tables_path / (filename + "_" + str(counter))) + ".csv"
+                    )
+                    df_i.drop(columns=["vcf_evidence"], inplace=True)
+                    df_i.to_parquet(
+                        str(tables_path / (filename + "_" + str(counter))) + ".parquet"
+                    )
+
                 tables.append(df_i)
                 counter += 1
             df = pandas.concat(tables)
@@ -221,26 +275,35 @@ def build_tables(
                     "minor_mutation",
                 ]:
                     df_i[col] = df_i[col].astype("category")
-                df_i.set_index(["uniqueid", "gene", "mutation"], inplace=True)
+
+                if uppercase:
+                    df_i = df_i.rename(columns=str.upper)
+                    df_i.set_index(["UNIQUEID", "GENE", "MUTATION"], inplace=True)
+                else:
+                    df_i.set_index(["uniqueid", "gene", "mutation"], inplace=True)
                 tables.append(df_i)
             df = pandas.concat(tables)
 
         if filename != "variants":
-            df.to_csv(str(tables_path / filename) + ".csv", index=False)
-            df.to_parquet(str(tables_path / filename) + ".parquet")
+            if uppercase:
+                df.to_csv(str(tables_path / filename.upper()) + ".csv", index=False)
+                df.to_parquet(str(tables_path / filename.upper()) + ".parquet")
+            else:
+                df.to_csv(str(tables_path / filename) + ".csv", index=False)
+                df.to_parquet(str(tables_path / filename) + ".parquet")
 
     successful_genome = 0
     too_few_reads_genome = 0
     too_few_reads_id = 0
-    if filename == "main_report":
+    if filename == "genomes":
 
         tables = []
         n_samples = 0
 
-        for i in tqdm((path).rglob("*" + filename + ".json")):
+        for i in tqdm((path).rglob("*main_report.json")):
 
-            uid = i.stem.split("." + filename)[0]
-            master_table.at[uid, "has_" + filename] = True
+            uid = i.stem.split(".main_report")[0]
+            master_table.at[uid, "has_genome"] = True
 
             row = [uid]
             f = open(i)
@@ -363,6 +426,7 @@ def build_tables(
         genomes["sublineage"] = genomes["sublineage"].astype("category")
         genomes["antibiogram"] = genomes["antibiogram"].astype("category")
         genomes["pipeline_build"] = genomes["pipeline_build"].astype("category")
+        genomes.fillna(value={"status": "not processed"}, inplace=True)
 
         if uppercase:
             genomes = genomes.rename(columns=str.upper)
