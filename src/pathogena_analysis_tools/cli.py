@@ -114,7 +114,7 @@ def build_tables(
         "variants",
         "mutations",
         "predictions",
-        "main_report",
+        "genomes",
     ], "can only specify one from this list"
 
     if filename in ["effects", "mutations", "predictions", "variants"]:
@@ -190,7 +190,7 @@ def build_tables(
                         "UNIQUEID",
                         "CATALOGUE_NAME",
                         "CATALOGUE_VERSION",
-                        "PREDICTION_VALUES",
+                        "CATALOGUE_VALUES",
                         "DRUG",
                     ],
                     inplace=True,
@@ -253,11 +253,18 @@ def build_tables(
                 tables.append(df_i)
                 counter += 1
             df = pandas.concat(tables)
-            files = glob.glob("variants_*.parquet")
-            schema = pq.ParquetFile(files[0]).schema_arrow
-            with pq.ParquetWriter("variants.parquet", schema=schema) as writer:
-                for file in tqdm(files):
-                    writer.write_table(pq.read_table(file, schema=schema))
+            if uppercase:
+                files = glob.glob("VARIANTS_*.parquet")
+                schema = pq.ParquetFile(files[0]).schema_arrow
+                with pq.ParquetWriter("VARIANTS.parquet", schema=schema) as writer:
+                    for file in tqdm(files):
+                        writer.write_table(pq.read_table(file, schema=schema))
+            else:
+                files = glob.glob("variants_*.parquet")
+                schema = pq.ParquetFile(files[0]).schema_arrow
+                with pq.ParquetWriter("variants.parquet", schema=schema) as writer:
+                    for file in tqdm(files):
+                        writer.write_table(pq.read_table(file, schema=schema))
 
         elif filename == "mutations":
             tables = []
@@ -286,10 +293,10 @@ def build_tables(
 
         if filename != "variants":
             if uppercase:
-                df.to_csv(str(tables_path / filename.upper()) + ".csv", index=False)
+                df.to_csv(str(tables_path / filename.upper()) + ".csv", index=True)
                 df.to_parquet(str(tables_path / filename.upper()) + ".parquet")
             else:
-                df.to_csv(str(tables_path / filename) + ".csv", index=False)
+                df.to_csv(str(tables_path / filename) + ".csv", index=True)
                 df.to_parquet(str(tables_path / filename) + ".parquet")
 
     successful_genome = 0
