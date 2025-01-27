@@ -289,21 +289,20 @@ def build_tables(
                         lineage = lineage_results[0]["Name"]
                     else:
                         lineage = lineage_results[0]["Name"][:8]
-                    lineage = lineage_results[0]["Name"][:8]
                     sublineage = lineage_results[0]["Name"]
-                    lineage_cov = lineage_results[0]["Coverage"]
-                    lineage_depth = lineage_results[0]["Median Depth"]
+                    # lineage_cov = lineage_results[0]["Coverage"]
+                    # lineage_depth = lineage_results[0]["Median Depth"]
                 else:
                     lineage = lineage_results[0]["Name"]
                     sublineage = ""
-                    lineage_cov = lineage_results[0]["Coverage"]
-                    lineage_depth = lineage_results[0]["Median Depth"]
+                    # lineage_cov = lineage_results[0]["Coverage"]
+                    # lineage_depth = lineage_results[0]["Median Depth"]
 
             else:
                 lineage = "mixed"
                 sublineage = ""
-                lineage_cov = None
-                lineage_depth = None
+                # lineage_cov = None
+                # lineage_depth = None
                 for i in lineage_results:
                     sublineage += i["Name"] + "/"
                 sublineage = sublineage[:-1]
@@ -368,11 +367,13 @@ def build_tables(
         if uppercase:
             genomes = genomes.rename(columns=str.upper)
             genomes.set_index("UNIQUEID", inplace=True)
+            genomes.to_csv(tables_path / "GENOMES.csv")
+            genomes.to_parquet(tables_path / "GENOMES.parquet")
         else:
             genomes.set_index("uniqueid", inplace=True)
+            genomes.to_csv(tables_path / "genomes.csv")
+            genomes.to_parquet(tables_path / "genomes.parquet")
 
-        genomes.to_csv(tables_path / "genomes.csv")
-        genomes.to_parquet(tables_path / "genomes.parquet")
         total_genomes = successful_genome + too_few_reads_genome + too_few_reads_id
         print(f"{total_genomes} samples were processed.")
         print(
