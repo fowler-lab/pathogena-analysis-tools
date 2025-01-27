@@ -24,23 +24,23 @@ def parse_variants(row):
     minor_reads = 0
     coverage = 0
     coverage2 = 0
-    # frs = 0
+    frs = None
 
     a = json.loads(row["vcf_evidence"])
-    if "COV_TOTAL" in a.keys():
-        coverage = a["COV_TOTAL"]
+    # if "COV_TOTAL" in a.keys():
+    #     coverage = a["COV_TOTAL"]
     if "COV" in a.keys():
         if isinstance(a["COV"], list):
-            coverage2 = sum(a["COV"])
+            coverage = sum(a["COV"])
         elif isinstance(a["COV"], int):
             coverage = a["COV"]
         else:
             coverage = -1
 
-    # if "FRS" in a.keys():
-    #     frs = a["FRS"]
-    #     if frs == ".":
-    #         frs = None
+    if "FRS" in a.keys():
+        frs = a["FRS"]
+        if frs == ".":
+            frs = None
 
     if variant[-1] == "x":
         is_null = True
@@ -55,7 +55,7 @@ def parse_variants(row):
             variant = minor_variant[:-1] + "z"
 
     return pandas.Series(
-        [variant, is_null, is_minor, minor_variant, minor_reads, coverage, coverage2]
+        [variant, is_null, is_minor, minor_variant, minor_reads, coverage, frs]
     )
 
 
@@ -180,16 +180,17 @@ def build_tables(
                         "minor_variant",
                         "minor_reads",
                         "coverage",
-                        "coverage2",
+                        "frs",
                     ]
                 ] = df_i.apply(parse_variants, axis=1)
-                df_i.drop(columns=["variant", "vcf_evidence"], inplace=True)
                 df_i.rename(columns={"var": "variant"}, inplace=True)
                 for col in [
                     "gene",
                 ]:
                     df_i[col] = df_i[col].astype("category")
                 df_i.set_index(["uniqueid", "gene", "variant"], inplace=True)
+                df_i.to_csv(str(tables_path / (filename + "_" + str(counter))) + ".csv")
+                df_i.drop(columns=["variant", "vcf_evidence"], inplace=True)
                 df_i.to_parquet(
                     str(tables_path / (filename + "_" + str(counter))) + ".parquet"
                 )
@@ -222,8 +223,8 @@ def build_tables(
                 tables.append(df_i)
             df = pandas.concat(tables)
 
-        df.to_csv(str(tables_path / filename) + ".csv", index=False)
         if filename != "variants":
+            df.to_csv(str(tables_path / filename) + ".csv", index=False)
             df.to_parquet(str(tables_path / filename) + ".parquet")
 
     successful_genome = 0
