@@ -93,6 +93,51 @@ def parse_mutations(row):
     return pandas.Series([mutation, is_null, is_minor, minor_mutation, minor_reads])
 
 
+def correct_tables(input_dir: str = ".", output_dir: str = "output/"):
+
+    assert input_dir != output_dir, "Input and output directories must be different!"
+
+    input = pathlib.Path(input_dir)
+    output = pathlib.Path(output_dir)
+
+    print("reading the VARIANTS dataframe")
+    variants = pandas.read_parquet(input / "VARIANTS.parquet")
+    variants.reset_index(inplace=True)
+
+    print("aggregating..")
+    df = (
+        variants[["UNIQUEID", "GENE", "GENE_POSITION", "COVERAGE"]]
+        .groupby(["UNIQUEID", "GENE", "GENE_POSITION"], observed=True)
+        .max()
+    )
+
+    print("reading the MUTATIONS dataframe")
+    mutations = pandas.read_parquet(input / "MUTATIONS.parquet")
+    mutations.reset_index(inplace=True)
+    mutations.set_index(["UNIQUEID", "GENE", "GENE_POSITION"], inplace=True)
+
+    print("joining..")
+    mutations = mutations.join(df, how="left")
+
+    mutations["FRS"] = mutations["MINOR_READS"] / mutations["COVERAGE"]
+
+    print("correcting..")
+    mask = (mutations.IS_MINOR) & (mutations.FRS >= 0.9)
+    mutations.loc[mask, "MUTATION"] = mutations[mask]["MINOR_MUTATION"]
+    mutations.loc[mask, "MINOR_MUTATION"] = None
+    mutations.loc[mask, "MINOR_READS"] = numpy.nan
+    mutations.loc[mask, "IS_MINOR"] = False
+
+    assert (
+        len(mutations[mutations.IS_MINOR & (mutations.FRS >= 0.9)]) == 0
+    ), "Some mutations were not corrected"
+
+    print("writing the new MUTATIONS dataframe to disc")
+    mutations.reset_index(inplace=True)
+    mutations.set_index(["UNIQUEID", "GENE", "MUTATION"], inplace=True)
+    mutations.to_parquet(output / "MUTATIONS.parquet")
+
+
 def build_tables(
     lookup_table: str = None,
     source_files: str = "data/",
@@ -459,7 +504,7 @@ def main():
     import defopt
 
     defopt.run(
-        [build_tables],
+        [build_tables, correct_tables],
         no_negated_flags=True,
         strict_kwonly=False,
         short={},
