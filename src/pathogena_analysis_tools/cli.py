@@ -172,11 +172,8 @@ def build_tables(
 
         for i in tqdm((path).rglob("*" + filename + ".csv"), total=n_files):
 
-            try:
-                df = pandas.read_csv(i)
-            except:
-                print(i)
-                stop
+            df = pandas.read_csv(i)
+            
             n_samples += 1
             if max_samples is not None and n_samples > max_samples:
                 break
