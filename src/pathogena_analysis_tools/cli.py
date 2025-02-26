@@ -151,6 +151,7 @@ def build_tables(
     master_file = pathlib.Path(lookup_table)
     master_table = pandas.read_csv(master_file)
     master_table.set_index("UNIQUEID", inplace=True)
+    print(master_table)
 
     path = pathlib.Path(source_files)
     tables_path = pathlib.Path(output)
@@ -365,6 +366,7 @@ def build_tables(
 
             if named_run_accession:
                 ena_run_accession = i.stem.split("." + filename)[0]
+                print(ena_run_accession)
                 uid = master_table[
                     master_table.run_accession == ena_run_accession
                 ].index.values[0]
