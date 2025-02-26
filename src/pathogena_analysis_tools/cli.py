@@ -179,7 +179,9 @@ def build_tables(
 
             if named_run_accession:
                 ena_run_accession = i.stem.split("." + filename)[0]
-                uid = "site.ENA.subj." + ena_run_accession + ".lab.1.iso.1"
+                uid = master_table[
+                    master_table.run_accession == ena_run_accession
+                ].index.values[0]
                 df["uniqueid"] = uid
             else:
                 uid = i.stem.split("." + filename)[0]
@@ -363,7 +365,9 @@ def build_tables(
 
             if named_run_accession:
                 ena_run_accession = i.stem.split("." + filename)[0]
-                uid = "site.ENA.subj." + ena_run_accession + ".lab.1.iso.1"
+                uid = master_table[
+                    master_table.run_accession == ena_run_accession
+                ].index.values[0]
             else:
                 uid = i.stem.split(".main_report")[0]
 
