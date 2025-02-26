@@ -365,7 +365,7 @@ def build_tables(
         for i in tqdm((path).rglob("*main_report.json")):
 
             if named_run_accession:
-                ena_run_accession = i.stem.split("." + filename)[0]
+                ena_run_accession = i.stem.split(".main_report")[0]
                 print(ena_run_accession)
                 uid = master_table[
                     master_table.run_accession == ena_run_accession
