@@ -151,7 +151,6 @@ def build_tables(
     master_file = pathlib.Path(lookup_table)
     master_table = pandas.read_csv(master_file)
     master_table.set_index("UNIQUEID", inplace=True)
-    print(master_table)
 
     path = pathlib.Path(source_files)
     tables_path = pathlib.Path(output)
@@ -173,7 +172,11 @@ def build_tables(
 
         for i in tqdm((path).rglob("*" + filename + ".csv"), total=n_files):
 
-            df = pandas.read_csv(i)
+            try:
+                df = pandas.read_csv(i)
+            except:
+                print(i)
+                stop
             n_samples += 1
             if max_samples is not None and n_samples > max_samples:
                 break
@@ -366,7 +369,6 @@ def build_tables(
 
             if named_run_accession:
                 ena_run_accession = i.stem.split(".main_report")[0]
-                print(ena_run_accession)
                 uid = master_table[
                     master_table.run_accession == ena_run_accession
                 ].index.values[0]
