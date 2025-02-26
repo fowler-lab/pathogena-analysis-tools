@@ -144,6 +144,7 @@ def build_tables(
     max_samples: int = None,
     output: str = None,
     uppercase: bool = True,
+    named_run_accession: bool = True,
     filename: str = None,
     chunks: int = 100,
 ):
@@ -175,8 +176,14 @@ def build_tables(
             n_samples += 1
             if max_samples is not None and n_samples > max_samples:
                 break
-            uid = i.stem.split("." + filename)[0]
-            df["uniqueid"] = uid
+
+            if named_run_accession:
+                ena_run_accession = i.stem.split("." + filename)[0]
+                uid = "site.ENA.subj." + ena_run_accession + ".lab.1.iso.1"
+                df["uniqueid"] = uid
+            else:
+                uid = i.stem.split("." + filename)[0]
+                df["uniqueid"] = uid
             master_table.at[uid, "has_" + filename] = True
             tables.append(df)
 
@@ -354,7 +361,12 @@ def build_tables(
 
         for i in tqdm((path).rglob("*main_report.json")):
 
-            uid = i.stem.split(".main_report")[0]
+            if named_run_accession:
+                ena_run_accession = i.stem.split("." + filename)[0]
+                uid = "site.ENA.subj." + ena_run_accession + ".lab.1.iso.1"
+            else:
+                uid = i.stem.split(".main_report")[0]
+
             master_table.at[uid, "has_genome"] = True
 
             row = [uid]
